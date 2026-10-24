@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sixthsenseinvestments-admin",
+  "pages_build_output_dir": "dist",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sixthsense-db",
+      "database_id": "84ed07b9-9e6e-4bfb-9fa5-9b0bba8a1708"
+    }
+  ]
+}

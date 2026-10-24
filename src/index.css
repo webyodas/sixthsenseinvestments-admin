@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #090c10;
+  --surface: #121720;
+  --surface-raised: #18202d;
+  --ink: #f1f4f8;
+  --ink-secondary: #c2c9d4;
+  --muted: #7d8898;
+  --accent: #d4af37;
+  --accent-ink: #090c10;
+  --partner: #b23b2b;
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif; /* taste-skill-ignore */
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--ink);
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* Typography styles according to taste-skill */
+h1, h2, h3, h4, .font-editorial {
+  font-family: 'Sentient', Georgia, serif;
+  letter-spacing: -0.02em;
+  font-weight: 400;
+}
+
+/* Tone steps instead of thin lines or borders */
+.surface-step {
+  background-color: var(--surface);
+}
+
+.surface-raised {
+  background-color: var(--surface-raised);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-raised);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
