@@ -27,6 +27,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { Logo } from './components/Logo';
+import { MarkdownRenderer } from './components/MarkdownRenderer';
 import { api, Lead, BlogPost } from './services/api';
 
 const PASSCODE = 'sixthsense2026';
@@ -1030,8 +1031,8 @@ export function App() {
                   </div>
                   <h2 className="font-serif text-2xl text-[#f1f4f8]">{editingBlog.title || 'Untitled Post'}</h2>
                   <p className="text-xs text-[#8b9bb4] italic">{editingBlog.excerpt}</p>
-                  <div className="prose prose-invert max-w-none text-xs text-[#c2c9d4] leading-relaxed whitespace-pre-wrap font-sans">
-                    {editingBlog.content}
+                  <div className="pt-2 border-t border-[#202938]">
+                    <MarkdownRenderer content={editingBlog.content || ''} />
                   </div>
                 </div>
               ) : (
@@ -1150,8 +1151,8 @@ export function App() {
             </div>
             <h2 className="font-serif text-2xl text-[#f1f4f8]">{selectedBlogForPreview.title}</h2>
             <p className="text-xs text-[#8b9bb4] italic">{selectedBlogForPreview.excerpt}</p>
-            <div className="text-xs text-[#c2c9d4] leading-relaxed whitespace-pre-wrap font-sans pt-2 border-t border-[#202938]">
-              {selectedBlogForPreview.content}
+            <div className="pt-2 border-t border-[#202938]">
+              <MarkdownRenderer content={selectedBlogForPreview.content} />
             </div>
           </div>
         </div>

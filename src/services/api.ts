@@ -112,12 +112,21 @@ function saveLocalLeads(leads: Lead[]) {
   }
 }
 
+function sanitizeBlog(b: Blog): Blog {
+  return {
+    ...b,
+    content: (b.content || '').replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n'),
+    excerpt: (b.excerpt || '').replace(/\\r\\n/g, ' ').replace(/\\n/g, ' ')
+  };
+}
+
 function getLocalBlogs(): Blog[] {
   try {
     const data = localStorage.getItem(LOCAL_BLOGS_KEY);
-    return data ? JSON.parse(data) : INITIAL_BLOGS;
+    const parsed = data ? JSON.parse(data) : INITIAL_BLOGS;
+    return parsed.map(sanitizeBlog);
   } catch {
-    return INITIAL_BLOGS;
+    return INITIAL_BLOGS.map(sanitizeBlog);
   }
 }
 
@@ -226,8 +235,9 @@ export const api = {
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.blogs) && data.blogs.length > 0) {
-          saveLocalBlogs(data.blogs);
-          return data.blogs;
+          const sanitized = data.blogs.map(sanitizeBlog);
+          saveLocalBlogs(sanitized);
+          return sanitized;
         }
       }
     } catch {
@@ -241,7 +251,7 @@ export const api = {
     if (category && category !== 'All') {
       blogs = blogs.filter(b => b.category === category);
     }
-    return blogs;
+    return blogs.map(sanitizeBlog);
   },
 
   async getBlogBySlug(slug: string): Promise<Blog | null> {
@@ -252,14 +262,15 @@ export const api = {
       const res = await fetch(url.toString());
       if (res.ok) {
         const data = await res.json();
-        if (data.success && data.blog) return data.blog;
+        if (data.success && data.blog) return sanitizeBlog(data.blog);
       }
     } catch {
       // Fallback
     }
 
     const blogs = getLocalBlogs();
-    return blogs.find(b => b.slug === slug) || null;
+    const found = blogs.find(b => b.slug === slug);
+    return found ? sanitizeBlog(found) : null;
   },
 
   async createBlog(blog: Omit<Blog, 'id' | 'created_at'>): Promise<{ success: boolean; slug?: string }> {
