@@ -10,17 +10,14 @@ import {
   AlertCircle,
   RefreshCw,
   X,
-  MessageSquare,
   Phone,
   Mail,
   Send,
   Lock,
   Eye,
   EyeOff,
-  User,
-  DollarSign,
-  Briefcase,
-  ChevronDown
+  LayoutList,
+  Table as TableIcon
 } from 'lucide-react';
 import { Logo } from './components/Logo';
 import { api, Lead } from './services/api';
@@ -41,8 +38,9 @@ export function App() {
   const [loading, setLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'New' | 'Contacted' | 'Converted' | 'Archived'>('All');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
   
-  // Modal / Drawer state for full inquiry details & internal notes
+  // Modal state for full inquiry details & internal notes
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [leadNoteInput, setLeadNoteInput] = useState('');
   const [savingNote, setSavingNote] = useState(false);
@@ -141,7 +139,7 @@ export function App() {
     }
   };
 
-  // Clean phone number for direct WhatsApp links
+  // Clean phone number for WhatsApp URL
   const getCleanPhone = (phone: string) => {
     const digits = phone.replace(/[^0-9]/g, '');
     if (digits.length === 10) return `91${digits}`;
@@ -157,21 +155,64 @@ export function App() {
     return `https://wa.me/${cleanPhone}?text=${text}`;
   };
 
-  // Date Formatter
-  const formatDate = (isoString: string) => {
+  // Standardized Phone Formatter (+91 XXXXX XXXXX)
+  const formatPhoneNumber = (phone: string) => {
+    if (!phone) return '';
+    const digits = phone.replace(/[^0-9]/g, '');
+    if (digits.length === 10) {
+      return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+    }
+    if (digits.length === 12 && digits.startsWith('91')) {
+      return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
+    }
+    return phone;
+  };
+
+  // Standardized Budget Formatter (removes corrupted ? and $ marks, adds clean ₹)
+  const formatBudget = (budget: string | undefined) => {
+    if (!budget) return 'Not specified';
+    // Replace any ? sequences or dollar signs with clean rupee symbol
+    let clean = budget.replace(/[\?$]+/g, '₹').trim();
+    // Consolidate duplicate rupee symbols
+    clean = clean.replace(/₹+/g, '₹');
+    // Ensure clean rupee prefix if starts with number
+    if (/^\d/.test(clean)) {
+      clean = `₹${clean}`;
+    }
+    return clean;
+  };
+
+  // Date Formatter: Date Only
+  const formatDateOnly = (isoString: string) => {
     try {
       const date = new Date(isoString);
-      return date.toLocaleString('en-IN', {
+      return date.toLocaleDateString('en-IN', {
         day: '2-digit',
         month: 'short',
-        year: 'numeric',
+        year: 'numeric'
+      });
+    } catch {
+      return isoString;
+    }
+  };
+
+  // Time Formatter: Time Only
+  const formatTimeOnly = (isoString: string) => {
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleTimeString('en-IN', {
         hour: '2-digit',
         minute: '2-digit',
         hour12: true
       });
     } catch {
-      return isoString;
+      return '';
     }
+  };
+
+  // Full Date & Time Formatter
+  const formatDateTime = (isoString: string) => {
+    return `${formatDateOnly(isoString)}, ${formatTimeOnly(isoString)}`;
   };
 
   // Filtered Leads
@@ -213,12 +254,12 @@ export function App() {
     const headers = ['ID', 'Date Received', 'Client Name', 'Phone', 'Email', 'Service Interested', 'Investment Budget', 'Status', 'Client Message', 'Internal Notes'];
     const rows = filteredLeads.map(l => [
       l.id,
-      formatDate(l.created_at),
+      formatDateTime(l.created_at),
       `"${l.name.replace(/"/g, '""')}"`,
-      `"${l.phone}"`,
+      `"${formatPhoneNumber(l.phone)}"`,
       `"${l.email}"`,
       `"${(l.service_interested || '').replace(/"/g, '""')}"`,
-      `"${(l.investment_budget || '').replace(/"/g, '""')}"`,
+      `"${formatBudget(l.investment_budget).replace(/"/g, '""')}"`,
       l.status,
       `"${(l.message || '').replace(/"/g, '""')}"`,
       `"${(l.notes || '').replace(/"/g, '""')}"`
@@ -233,10 +274,25 @@ export function App() {
     document.body.removeChild(link);
   };
 
+  // Status Badge Colors Helper
+  const getStatusBadgeStyle = (status: Lead['status']) => {
+    switch (status) {
+      case 'New':
+        return 'text-amber-400 bg-amber-950/40 border-amber-800/40';
+      case 'Contacted':
+        return 'text-sky-400 bg-sky-950/40 border-sky-800/40';
+      case 'Converted':
+        return 'text-emerald-400 bg-emerald-950/40 border-emerald-800/40';
+      case 'Archived':
+      default:
+        return 'text-slate-400 bg-slate-900 border-slate-800';
+    }
+  };
+
   // --- LOGIN VIEW ---
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#090c10] text-[#f1f4f8] flex items-center justify-center p-4">
+      <div data-ui className="min-h-screen bg-[#090c10] text-[#f1f4f8] flex items-center justify-center p-4">
         <div className="w-full max-w-md bg-[#121720] border border-[#1e2638] rounded-2xl p-8 space-y-8">
           <div className="text-center space-y-3">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-[#090c10] border border-[#d4af37]/40 flex items-center justify-center">
@@ -306,7 +362,7 @@ export function App() {
   return (
     <div data-ui className="min-h-screen bg-[#090c10] text-[#f1f4f8]">
       {/* Top Header */}
-      <header className="bg-[#090c10] sticky top-0 z-20">
+      <header className="bg-[#090c10] sticky top-0 z-20 border-b border-[#1e2638]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#121720] border border-[#d4af37]/40 flex items-center justify-center">
@@ -328,18 +384,18 @@ export function App() {
               onClick={loadLeads}
               disabled={loading}
               title="Refresh Inquiries"
-              className="p-2.5 rounded-lg bg-[#121720] border border-[#1e2638] hover:border-[#8b9bb4] text-[#8b9bb4] hover:text-[#f1f4f8] transition-colors flex items-center gap-2 text-xs"
+              className="h-9 px-3 rounded-lg bg-[#121720] border border-[#1e2638] hover:border-[#8b9bb4] text-[#8b9bb4] hover:text-[#f1f4f8] transition-colors flex items-center gap-2 text-xs"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[#d4af37]' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#d4af37]' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
 
             <button
               onClick={exportCSV}
               title="Download CSV"
-              className="p-2.5 rounded-lg bg-[#121720] border border-[#1e2638] hover:border-[#8b9bb4] text-[#8b9bb4] hover:text-[#f1f4f8] transition-colors flex items-center gap-2 text-xs"
+              className="h-9 px-3 rounded-lg bg-[#121720] border border-[#1e2638] hover:border-[#8b9bb4] text-[#8b9bb4] hover:text-[#f1f4f8] transition-colors flex items-center gap-2 text-xs"
             >
-              <Download className="w-4 h-4 text-[#d4af37]" />
+              <Download className="w-3.5 h-3.5 text-[#d4af37]" />
               <span className="hidden sm:inline">Export CSV</span>
             </button>
 
@@ -347,7 +403,7 @@ export function App() {
               href={PUBLIC_SITE_URL}
               target="_blank"
               rel="noreferrer"
-              className="p-2.5 rounded-lg bg-[#121720] border border-[#1e2638] hover:border-[#8b9bb4] text-[#8b9bb4] hover:text-[#f1f4f8] transition-colors flex items-center gap-1.5 text-xs"
+              className="h-9 px-3 rounded-lg bg-[#121720] border border-[#1e2638] hover:border-[#8b9bb4] text-[#8b9bb4] hover:text-[#f1f4f8] transition-colors flex items-center gap-1.5 text-xs"
             >
               <span>Live Site</span>
               <ExternalLink className="w-3.5 h-3.5" />
@@ -355,9 +411,9 @@ export function App() {
 
             <button
               onClick={handleLogout}
-              className="p-2.5 rounded-lg bg-rose-950/20 border border-rose-900/30 hover:bg-rose-950/40 text-rose-300 transition-colors flex items-center gap-1.5 text-xs"
+              className="h-9 px-3 rounded-lg bg-rose-950/20 border border-rose-900/30 hover:bg-rose-950/40 text-rose-300 transition-colors flex items-center gap-1.5 text-xs"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5" />
               <span>Log Out</span>
             </button>
           </div>
@@ -388,8 +444,8 @@ export function App() {
           </div>
         </div>
 
-        {/* Search & Status Filters */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        {/* Search, Status Filters & View Toggle */}
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
           {/* Status Tabs */}
           <div className="flex flex-wrap items-center gap-2">
             {(['All', 'New', 'Contacted', 'Converted', 'Archived'] as const).map(tab => {
@@ -402,14 +458,14 @@ export function App() {
                 <button
                   key={tab}
                   onClick={() => setStatusFilter(tab)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                  className={`h-9 px-3.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-2 ${
                     active 
                       ? 'bg-[#d4af37] text-[#090c10]' 
                       : 'bg-[#121720] border border-[#1e2638] text-[#8b9bb4] hover:text-[#f1f4f8] hover:border-[#8b9bb4]'
                   }`}
                 >
                   <span>{tab}</span>
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
                     active ? 'bg-[#090c10]/20 text-[#090c10]' : 'bg-[#1e2638] text-[#8b9bb4]'
                   }`}>
                     {count}
@@ -419,177 +475,365 @@ export function App() {
             })}
           </div>
 
-          {/* Search Bar */}
-          <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8b9bb4]" />
-            <input 
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by client name, phone, email..."
-              className="w-full bg-[#121720] border border-[#1e2638] focus:border-[#d4af37] rounded-xl pl-10 pr-4 py-2 text-xs text-[#f1f4f8] placeholder-[#475569] outline-none transition-colors"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8b9bb4] hover:text-[#f1f4f8]"
+          {/* Right Controls: View Toggle & Search */}
+          <div className="flex items-center gap-3 w-full lg:w-auto">
+            {/* View Mode Switcher */}
+            <div className="h-9 p-0.5 rounded-lg bg-[#121720] border border-[#1e2638] flex items-center shrink-0">
+              <button
+                onClick={() => setViewMode('cards')}
+                title="Cards View"
+                className={`h-7 px-2.5 rounded text-xs flex items-center gap-1.5 font-medium transition-colors ${
+                  viewMode === 'cards' 
+                    ? 'bg-[#090c10] text-[#f1f4f8] border border-[#1e2638]' 
+                    : 'text-[#8b9bb4] hover:text-[#f1f4f8]'
+                }`}
               >
-                <X className="w-3.5 h-3.5" />
+                <LayoutList className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Cards</span>
               </button>
-            )}
+
+              <button
+                onClick={() => setViewMode('table')}
+                title="Table View"
+                className={`h-7 px-2.5 rounded text-xs flex items-center gap-1.5 font-medium transition-colors ${
+                  viewMode === 'table' 
+                    ? 'bg-[#090c10] text-[#f1f4f8] border border-[#1e2638]' 
+                    : 'text-[#8b9bb4] hover:text-[#f1f4f8]'
+                }`}
+              >
+                <TableIcon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Table</span>
+              </button>
+            </div>
+
+            {/* Search Bar */}
+            <div className="relative flex-1 lg:w-72">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8b9bb4]" />
+              <input 
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search inquiries..."
+                className="w-full h-9 bg-[#121720] border border-[#1e2638] focus:border-[#d4af37] rounded-lg pl-9 pr-7 text-xs text-[#f1f4f8] placeholder-[#475569] outline-none transition-colors"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8b9bb4] hover:text-[#f1f4f8]"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Inquiries List / Table */}
-        <div className="rounded-xl bg-[#121720] border border-[#1e2638] overflow-hidden">
-          {loading && leads.length === 0 ? (
-            <div className="py-20 text-center space-y-3">
-              <RefreshCw className="w-8 h-8 text-[#d4af37] animate-spin mx-auto" />
-              <p className="text-sm text-[#8b9bb4]">Connecting to Cloudflare D1 database...</p>
-            </div>
-          ) : filteredLeads.length === 0 ? (
-            <div className="py-20 text-center space-y-2">
-              <p className="text-sm text-[#f1f4f8]">No inquiries found.</p>
-              <p className="text-xs text-[#8b9bb4]">
-                {searchQuery ? 'Try adjusting your search criteria.' : 'New inquiries from the website will automatically appear here.'}
-              </p>
-            </div>
-          ) : (
-            <div data-ui className="divide-y divide-[#1e2638]">
-              {filteredLeads.map((lead) => {
-                const isSelected = selectedLead?.id === lead.id;
-                const statusColor = 
-                  lead.status === 'New' ? 'text-amber-400 bg-amber-950/40 border-amber-800/40' :
-                  lead.status === 'Contacted' ? 'text-sky-400 bg-sky-950/40 border-sky-800/40' :
-                  lead.status === 'Converted' ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/40' :
-                  'text-slate-400 bg-slate-900 border-slate-800';
+        {/* Inquiries Content (Table or Cards View) */}
+        {loading && leads.length === 0 ? (
+          <div className="rounded-xl bg-[#121720] border border-[#1e2638] py-20 text-center space-y-3">
+            <RefreshCw className="w-8 h-8 text-[#d4af37] animate-spin mx-auto" />
+            <p className="text-sm text-[#8b9bb4]">Connecting to Cloudflare D1 database...</p>
+          </div>
+        ) : filteredLeads.length === 0 ? (
+          <div className="rounded-xl bg-[#121720] border border-[#1e2638] py-20 text-center space-y-2">
+            <p className="text-sm text-[#f1f4f8]">No inquiries found.</p>
+            <p className="text-xs text-[#8b9bb4]">
+              {searchQuery ? 'Try adjusting your search criteria.' : 'New inquiries from the website will automatically appear here.'}
+            </p>
+          </div>
+        ) : viewMode === 'table' ? (
+          
+          /* --- TABLE VIEW --- */
+          <div data-ui className="rounded-xl bg-[#121720] border border-[#1e2638] overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-[#0d1117] text-[#8b9bb4] font-medium border-b border-[#1e2638]">{/* taste-skill-ignore */}
+                    <th className="py-3 px-4 w-36 whitespace-nowrap">Date & Time</th>
+                    <th className="py-3 px-4 w-48">Client</th>
+                    <th className="py-3 px-4 w-52">Service & Budget</th>
+                    <th className="py-3 px-4 min-w-[220px]">Message Preview</th>
+                    <th className="py-3 px-4 w-32 whitespace-nowrap">Status</th>
+                    <th className="py-3 px-4 w-44 text-right whitespace-nowrap">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1e2638]">{/* taste-skill-ignore */}
+                  {filteredLeads.map((lead) => {
+                    const isSelected = selectedLead?.id === lead.id;
+                    const statusStyle = getStatusBadgeStyle(lead.status);
 
-                return (
-                  <div 
-                    key={lead.id}
-                    className={`p-5 transition-colors ${
-                      isSelected ? 'bg-[#18202f]' : 'hover:bg-[#151c27]'
-                    }`}
-                  >
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                      
-                      {/* Left: Client Name, Date, Service, Budget */}
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold text-base text-[#f1f4f8]">
-                            {lead.name}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-medium border ${statusColor}`}>
-                            {lead.status}
-                          </span>
-                          <span className="text-xs text-[#8b9bb4] flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-[#8b9bb4]" />
-                            {formatDate(lead.created_at)}
-                          </span>
-                        </div>
+                    return (
+                      <tr 
+                        key={lead.id}
+                        className={`transition-colors ${
+                          isSelected ? 'bg-[#18202f]' : 'hover:bg-[#151c27]'
+                        }`}
+                      >
+                        {/* Date & Time */}
+                        <td className="py-3.5 px-4 align-top whitespace-nowrap">
+                          <div className="font-medium text-[#f1f4f8]">{formatDateOnly(lead.created_at)}</div>
+                          <div className="text-[11px] text-[#8b9bb4]">{formatTimeOnly(lead.created_at)}</div>
+                        </td>
 
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-[#8b9bb4]">
-                          <span className="px-2 py-0.5 rounded bg-[#090c10] border border-[#1e2638] text-[#d4af37] font-medium">
-                            {lead.service_interested || 'General Consultation'}
+                        {/* Client Info */}
+                        <td className="py-3.5 px-4 align-top">
+                          <div className="font-semibold text-sm text-[#f1f4f8]">{lead.name}</div>
+                          <div className="text-[11px] text-[#8b9bb4] truncate mt-0.5">
+                            {formatPhoneNumber(lead.phone)}
+                          </div>
+                          <div className="text-[11px] text-[#8b9bb4] truncate">
+                            {lead.email}
+                          </div>
+                        </td>
+
+                        {/* Service & Budget */}
+                        <td className="py-3.5 px-4 align-top">
+                          <span className="inline-block px-2 py-0.5 rounded bg-[#090c10] border border-[#1e2638] text-[#d4af37] text-[11px] font-medium max-w-[200px] truncate">
+                            {lead.service_interested || 'General Inquiry'}
                           </span>
-                          <span className="flex items-center gap-1 text-[#f1f4f8]">
-                            <DollarSign className="w-3 h-3 text-[#d4af37]" />
-                            <span>Budget: {lead.investment_budget || 'Not specified'}</span>
-                          </span>
-                        </div>
+                          <div className="text-[#f1f4f8] font-medium text-[11px] mt-1">
+                            Budget: {formatBudget(lead.investment_budget)}
+                          </div>
+                        </td>
 
                         {/* Message Preview */}
-                        {lead.message && (
-                          <p className="text-xs text-[#8b9bb4] line-clamp-2 pt-1 font-normal italic">
-                            &ldquo;{lead.message}&rdquo;
-                          </p>
-                        )}
+                        <td className="py-3.5 px-4 align-top">
+                          {lead.message ? (
+                            <p className="text-[#8b9bb4] line-clamp-2 italic font-normal">
+                              &ldquo;{lead.message}&rdquo;
+                            </p>
+                          ) : (
+                            <span className="text-[#475569] italic">No message included</span>
+                          )}
 
-                        {/* Internal Notes Preview */}
-                        {lead.notes && (
-                          <div className="pt-1 text-[11px] text-[#d4af37] flex items-center gap-1">
-                            <span className="font-semibold">Internal Note:</span>
-                            <span className="truncate">{lead.notes}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Right: Quick Action Buttons & Status Selector */}
-                      <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        {/* Direct WhatsApp Button */}
-                        <a
-                          href={getWhatsAppUrl(lead)}
-                          target="_blank"
-                          rel="noreferrer"
-                          title="Open WhatsApp Chat"
-                          className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs flex items-center gap-1.5 transition-colors"
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                          <span>WhatsApp</span>
-                        </a>
-
-                        {/* Direct Call Button */}
-                        <a
-                          href={`tel:${lead.phone}`}
-                          title="Call Client"
-                          className="px-3 py-2 rounded-lg bg-[#090c10] border border-[#1e2638] hover:border-[#8b9bb4] text-[#f1f4f8] text-xs flex items-center gap-1.5 transition-colors"
-                        >
-                          <Phone className="w-3.5 h-3.5 text-[#38bdf8]" />
-                          <span>{lead.phone}</span>
-                        </a>
-
-                        {/* Direct Email Button */}
-                        <a
-                          href={`mailto:${lead.email}?subject=Regarding your consultation request with Sixth Sense Investments`}
-                          title="Email Client"
-                          className="p-2 rounded-lg bg-[#090c10] border border-[#1e2638] hover:border-[#8b9bb4] text-[#8b9bb4] hover:text-[#f1f4f8] transition-colors"
-                        >
-                          <Mail className="w-3.5 h-3.5" />
-                        </a>
+                          {lead.notes && (
+                            <div className="text-[10px] text-[#d4af37] font-medium mt-1 truncate">
+                              Note: {lead.notes}
+                            </div>
+                          )}
+                        </td>
 
                         {/* Status Dropdown */}
-                        <div className="relative">
+                        <td className="py-3.5 px-4 align-top whitespace-nowrap">
                           <select
                             value={lead.status}
                             disabled={statusUpdatingId === lead.id}
                             onChange={(e) => handleStatusChange(lead.id, e.target.value as Lead['status'])}
-                            className="bg-[#090c10] border border-[#1e2638] hover:border-[#8b9bb4] text-xs text-[#f1f4f8] rounded-lg px-2.5 py-2 outline-none cursor-pointer"
+                            className={`h-7 px-2 text-xs rounded-lg border outline-none cursor-pointer ${statusStyle}`}
                           >
-                            <option value="New">Status: New</option>
-                            <option value="Contacted">Status: Contacted</option>
-                            <option value="Converted">Status: Converted</option>
-                            <option value="Archived">Status: Archived</option>
+                            <option value="New">New</option>
+                            <option value="Contacted">Contacted</option>
+                            <option value="Converted">Converted</option>
+                            <option value="Archived">Archived</option>
                           </select>
-                        </div>
+                        </td>
 
-                        {/* View Full Details & Notes Button */}
-                        <button
-                          onClick={() => {
-                            setSelectedLead(lead);
-                            setLeadNoteInput(lead.notes || '');
-                          }}
-                          className="px-3 py-2 rounded-lg bg-[#d4af37]/15 hover:bg-[#d4af37]/25 text-[#d4af37] border border-[#d4af37]/30 text-xs font-medium transition-colors"
-                        >
-                          Details & Notes
-                        </button>
+                        {/* Quick Actions */}
+                        <td className="py-3.5 px-4 align-top text-right whitespace-nowrap">
+                          <div className="inline-flex items-center justify-end gap-1.5">
+                            {/* WhatsApp */}
+                            <a
+                              href={getWhatsAppUrl(lead)}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="Chat on WhatsApp"
+                              className="h-7 px-2 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] inline-flex items-center gap-1 transition-colors"
+                            >
+                              <Send className="w-3 h-3" />
+                              <span>WhatsApp</span>
+                            </a>
 
-                        {/* Delete Button */}
-                        <button
-                          onClick={() => handleDeleteLead(lead.id, lead.name)}
-                          title="Delete Lead"
-                          className="p-2 rounded-lg text-[#8b9bb4] hover:text-rose-400 hover:bg-rose-950/20 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                            {/* Call */}
+                            <a
+                              href={`tel:${lead.phone}`}
+                              title={`Call ${formatPhoneNumber(lead.phone)}`}
+                              className="h-7 w-7 rounded bg-[#090c10] border border-[#1e2638] hover:border-[#8b9bb4] text-[#38bdf8] inline-flex items-center justify-center transition-colors"
+                            >
+                              <Phone className="w-3 h-3" />
+                            </a>
+
+                            {/* Email */}
+                            <a
+                              href={`mailto:${lead.email}?subject=Sixth Sense Investments Consultation`}
+                              title={`Email ${lead.email}`}
+                              className="h-7 w-7 rounded bg-[#090c10] border border-[#1e2638] hover:border-[#8b9bb4] text-[#8b9bb4] hover:text-[#f1f4f8] inline-flex items-center justify-center transition-colors"
+                            >
+                              <Mail className="w-3 h-3" />
+                            </a>
+
+                            {/* Details */}
+                            <button
+                              onClick={() => {
+                                setSelectedLead(lead);
+                                setLeadNoteInput(lead.notes || '');
+                              }}
+                              title="View Details & Notes"
+                              className="h-7 px-2 rounded bg-[#d4af37]/15 hover:bg-[#d4af37]/25 text-[#d4af37] border border-[#d4af37]/30 text-[11px] font-medium transition-colors"
+                            >
+                              Notes
+                            </button>
+
+                            {/* Delete */}
+                            <button
+                              onClick={() => handleDeleteLead(lead.id, lead.name)}
+                              title="Delete Lead"
+                              className="h-7 w-7 rounded text-[#8b9bb4] hover:text-rose-400 inline-flex items-center justify-center transition-colors"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </td>
+
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+
+          /* --- CARDS VIEW (STRICT GRID & ALIGNMENT LOCK) --- */
+          <div data-ui className="space-y-3">
+            {filteredLeads.map((lead) => {
+              const isSelected = selectedLead?.id === lead.id;
+              const statusStyle = getStatusBadgeStyle(lead.status);
+
+              return (
+                <div 
+                  key={lead.id}
+                  className={`rounded-xl bg-[#121720] border border-[#1e2638] p-5 space-y-3 transition-colors ${
+                    isSelected ? 'ring-1 ring-[#d4af37]/40 bg-[#151c28]' : 'hover:border-[#2d3748]'
+                  }`}
+                >
+                  {/* Card Row 1: Header + Action Toolbar */}
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    
+                    {/* Left: Client Name, Status Badge, Date & Time */}
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <span className="font-semibold text-base text-[#f1f4f8]">
+                        {lead.name}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${statusStyle}`}>
+                        {lead.status}
+                      </span>
+                      <span className="text-xs text-[#8b9bb4] flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-[#8b9bb4]" />
+                        <span>{formatDateTime(lead.created_at)}</span>
+                      </span>
+                    </div>
+
+                    {/* Right: Fixed-Width Standardized Action Toolbar */}
+                    <div className="flex items-center gap-2 self-start lg:self-auto shrink-0">
+                      
+                      {/* WhatsApp Button (Fixed Width 96px) */}
+                      <a
+                        href={getWhatsAppUrl(lead)}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Chat on WhatsApp"
+                        className="h-8 w-24 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs flex items-center justify-center gap-1.5 transition-colors"
+                      >
+                        <Send className="w-3 h-3" />
+                        <span>WhatsApp</span>
+                      </a>
+
+                      {/* Call Button (Fixed 32x32 icon) */}
+                      <a
+                        href={`tel:${lead.phone}`}
+                        title={`Call ${formatPhoneNumber(lead.phone)}`}
+                        className="h-8 w-8 rounded-lg bg-[#090c10] border border-[#1e2638] hover:border-[#8b9bb4] text-[#38bdf8] flex items-center justify-center transition-colors"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                      </a>
+
+                      {/* Email Button (Fixed 32x32 icon) */}
+                      <a
+                        href={`mailto:${lead.email}?subject=Regarding your consultation request with Sixth Sense Investments`}
+                        title={`Email ${lead.email}`}
+                        className="h-8 w-8 rounded-lg bg-[#090c10] border border-[#1e2638] hover:border-[#8b9bb4] text-[#8b9bb4] hover:text-[#f1f4f8] flex items-center justify-center transition-colors"
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                      </a>
+
+                      {/* Status Selector Dropdown (Fixed Width 110px) */}
+                      <select
+                        value={lead.status}
+                        disabled={statusUpdatingId === lead.id}
+                        onChange={(e) => handleStatusChange(lead.id, e.target.value as Lead['status'])}
+                        className={`h-8 w-28 px-2 text-xs rounded-lg border outline-none cursor-pointer ${statusStyle}`}
+                      >
+                        <option value="New">Status: New</option>
+                        <option value="Contacted">Status: Contacted</option>
+                        <option value="Converted">Status: Converted</option>
+                        <option value="Archived">Status: Archived</option>
+                      </select>
+
+                      {/* Details & Notes Button (Fixed Width 110px) */}
+                      <button
+                        onClick={() => {
+                          setSelectedLead(lead);
+                          setLeadNoteInput(lead.notes || '');
+                        }}
+                        className="h-8 px-3 rounded-lg bg-[#d4af37]/15 hover:bg-[#d4af37]/25 text-[#d4af37] border border-[#d4af37]/30 text-xs font-medium transition-colors"
+                      >
+                        Details & Notes
+                      </button>
+
+                      {/* Delete Button (Fixed 32x32) */}
+                      <button
+                        onClick={() => handleDeleteLead(lead.id, lead.name)}
+                        title="Delete Inquiry"
+                        className="h-8 w-8 rounded-lg text-[#8b9bb4] hover:text-rose-400 hover:bg-rose-950/20 flex items-center justify-center transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
 
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+
+                  {/* Card Row 2: Metadata Strip (Service, Budget, Phone, Email) */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <span className="px-2.5 py-1 rounded-md bg-[#090c10] border border-[#1e2638] text-[#d4af37] text-xs font-medium">
+                      {lead.service_interested || 'General Consultation'}
+                    </span>
+
+                    <span className="px-2.5 py-1 rounded-md bg-[#090c10] border border-[#1e2638] text-[#f1f4f8] text-xs font-medium">
+                      Budget: {formatBudget(lead.investment_budget)}
+                    </span>
+
+                    <span className="px-2.5 py-1 rounded-md bg-[#090c10] border border-[#1e2638] text-[#8b9bb4] text-xs flex items-center gap-1.5">
+                      <Phone className="w-3 h-3 text-[#38bdf8]" />
+                      <span>{formatPhoneNumber(lead.phone)}</span>
+                    </span>
+
+                    <span className="px-2.5 py-1 rounded-md bg-[#090c10] border border-[#1e2638] text-[#8b9bb4] text-xs flex items-center gap-1.5">
+                      <Mail className="w-3 h-3 text-[#d4af37]" />
+                      <span>{lead.email}</span>
+                    </span>
+                  </div>
+
+                  {/* Card Row 3: Client Message Quote (if present) */}
+                  {lead.message && (
+                    <div className="p-3 rounded-lg bg-[#090c10] border border-[#1e2638]/60 text-xs text-[#8b9bb4] italic leading-relaxed">
+                      &ldquo;{lead.message}&rdquo;
+                    </div>
+                  )}
+
+                  {/* Card Row 4: Internal CRM Notes (if present) */}
+                  {lead.notes && (
+                    <div className="p-2.5 rounded-lg bg-[#d4af37]/10 border border-[#d4af37]/20 text-xs text-[#d4af37] flex items-center gap-2">
+                      <span className="font-semibold shrink-0">Internal Note:</span>
+                      <span className="truncate">{lead.notes}</span>
+                    </div>
+                  )}
+
+                </div>
+              );
+            })}
+          </div>
+        )}
+
       </main>
 
       {/* DETAIL & CRM NOTES MODAL */}
@@ -602,18 +846,18 @@ export function App() {
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="font-serif text-2xl text-[#f1f4f8]">{selectedLead.name}</h2>
-                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-[#d4af37]/15 text-[#d4af37] border border-[#d4af37]/30">
+                  <span className={`px-2 py-0.5 rounded text-xs font-semibold border ${getStatusBadgeStyle(selectedLead.status)}`}>
                     {selectedLead.status}
                   </span>
                 </div>
-                <p className="text-xs text-[#8b9bb4]">
-                  Inquiry received on {formatDate(selectedLead.created_at)}
+                <p className="text-xs text-[#8b9bb4] mt-0.5">
+                  Inquiry received on {formatDateTime(selectedLead.created_at)}
                 </p>
               </div>
 
               <button
                 onClick={() => setSelectedLead(null)}
-                className="p-2 rounded-lg bg-[#090c10] border border-[#1e2638] hover:border-[#8b9bb4] text-[#8b9bb4] hover:text-[#f1f4f8]"
+                className="h-8 w-8 rounded-lg bg-[#090c10] border border-[#1e2638] hover:border-[#8b9bb4] text-[#8b9bb4] hover:text-[#f1f4f8] flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -636,7 +880,7 @@ export function App() {
                 className="p-3 rounded-xl bg-[#090c10] border border-[#1e2638] hover:border-[#8b9bb4] text-[#f1f4f8] font-medium text-xs flex items-center justify-center gap-2 transition-colors"
               >
                 <Phone className="w-4 h-4 text-[#38bdf8]" />
-                <span>Call {selectedLead.phone}</span>
+                <span>Call {formatPhoneNumber(selectedLead.phone)}</span>
               </a>
 
               <a
@@ -657,12 +901,12 @@ export function App() {
 
               <div className="space-y-1">
                 <span className="text-xs text-[#8b9bb4] font-medium">Capital / Portfolio Budget</span>
-                <p className="text-sm font-semibold text-[#f1f4f8]">{selectedLead.investment_budget || 'Not specified'}</p>
+                <p className="text-sm font-semibold text-[#f1f4f8]">{formatBudget(selectedLead.investment_budget)}</p>
               </div>
 
               <div className="space-y-1">
                 <span className="text-xs text-[#8b9bb4] font-medium">Phone Number</span>
-                <p className="text-sm text-[#f1f4f8]">{selectedLead.phone}</p>
+                <p className="text-sm text-[#f1f4f8]">{formatPhoneNumber(selectedLead.phone)}</p>
               </div>
 
               <div className="space-y-1">
