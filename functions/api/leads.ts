@@ -156,3 +156,39 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
     });
   }
 };
+
+export const onRequestDelete: PagesFunction<Env> = async (context) => {
+  try {
+    const { env, request } = context;
+    if (!env.DB) {
+      return new Response(JSON.stringify({ error: "D1 Database binding 'DB' not configured" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    const url = new URL(request.url);
+    const id = url.searchParams.get("id");
+
+    if (!id) {
+      return new Response(JSON.stringify({ success: false, error: "Lead ID is required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    await env.DB.prepare("DELETE FROM leads WHERE id = ?").bind(id).run();
+
+    return new Response(JSON.stringify({ success: true, message: "Lead deleted successfully" }), {
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      }
+    });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ success: false, error: err.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+};

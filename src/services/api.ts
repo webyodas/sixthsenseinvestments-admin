@@ -41,7 +41,7 @@ No overthinking. No panic adjustments. You design the risk matrix before the mar
 Contact our advisory desk to review your existing equity portfolio against institutional benchmarks.`,
     category: 'Wealth Advisory',
     author: 'Mann Jain (Founder & SEBI R.A.)',
-    cover_image: '/assets/images/img_3.jpg',
+    cover_image: '/assets/images/img_6.jpg',
     status: 'Published',
     read_time: '4 min read',
     created_at: '2026-02-15T11:00:00Z'
@@ -221,6 +221,28 @@ export const api = {
     const current = getLocalLeads();
     const updated = current.map(l => l.id === id ? { ...l, status, notes: notes !== undefined ? notes : l.notes } : l);
     saveLocalLeads(updated);
+    return true;
+  },
+
+  async deleteLead(id: number): Promise<boolean> {
+    try {
+      const url = new URL('/api/leads', window.location.origin);
+      url.searchParams.set('id', id.toString());
+      const res = await fetch(url.toString(), { method: 'DELETE' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          const current = getLocalLeads();
+          saveLocalLeads(current.filter(l => l.id !== id));
+          return true;
+        }
+      }
+    } catch {
+      // Fallback
+    }
+
+    const current = getLocalLeads();
+    saveLocalLeads(current.filter(l => l.id !== id));
     return true;
   },
 

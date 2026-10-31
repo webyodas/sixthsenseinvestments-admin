@@ -113,7 +113,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
     if (line.startsWith('## ')) {
       flushList();
       elements.push(
-        <h2 key={`h2-${elementKey++}`} className="font-serif text-2xl sm:text-3xl text-[#f1f4f8] pt-8 pb-3 border-b border-[#1e2638] mt-4">
+        <h2 key={`h2-${elementKey++}`} className="font-serif text-2xl sm:text-3xl text-[#f1f4f8] pt-8 pb-3 mt-4">
           {renderInline(line.slice(3).trim())}
         </h2>
       );
