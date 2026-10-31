@@ -67,6 +67,28 @@ Registrations are now open through our Academy portal.`,
     status: 'Published',
     read_time: '3 min read',
     created_at: '2026-03-01T09:00:00Z'
+  },
+  {
+    id: 4,
+    slug: 'trade-like-us-price-action-and-risk-mindset',
+    title: 'Trade Like Us: Transitioning from Retail Speculation to Systematic Market Edge',
+    excerpt: 'We started with zero knowledge, just like you. Discover how disciplined risk boundaries, liquidity mapping, and volume profile principles transformed our execution.',
+    content: `We started with zero knowledge, just like everyone entering the Indian stock market. But with the right psychological framework, mechanical risk boundaries, and deep respect for auction theory, we completely turned the game around.
+
+### 1. Eliminating Emotional Bias
+Retail traders fail because they confuse volatility with opportunity. When markets expand, unhedged participants chase green candles and panic on red pullbacks. Institutional desks operate inversely: we map liquidity pools beforehand, wait for confirmation, and execute without hesitation.
+
+### 2. The Asymmetric Edge
+Never risk ₹1 to make ₹1. Every trade executed at Sixth Sense Investments targets a baseline 1:3 reward-to-risk ratio. If a setup does not provide that mathematical asymmetry, we sit in cash.
+
+### 3. Continuous Learning
+Market mastery is an ongoing process of tracking, journaling, and refining. Join our offline masterclasses in Palghar & Mumbai or connect directly with our advisory desk.`,
+    category: 'Mentorship & Education',
+    author: 'Mann Jain (Founder & SEBI R.A.)',
+    cover_image: '/assets/images/img_2.jpg',
+    status: 'Published',
+    read_time: '4 min read',
+    created_at: '2026-03-10T14:00:00Z'
   }
 ];
 

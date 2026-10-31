@@ -1076,7 +1076,9 @@ export function App() {
                       >
                         <option value="/assets/images/img_18.jpg">Budget Day Live Terminal (img_18)</option>
                         <option value="/assets/images/img_3.jpg">Aditya Birla Capital Partner (img_3)</option>
-                        <option value="/assets/images/img_20.jpg">Quantitative Workstation (img_20)</option>
+                        <option value="/assets/images/img_20.jpg">Dehradun 2026 Workstation (img_20)</option>
+                        <option value="/assets/images/img_2.jpg">Trade Like Us Masterclass (img_2)</option>
+                        <option value="/assets/images/img_6.jpg">Strategy Desk Briefing (img_6)</option>
                         <option value="/assets/images/logo_gold.png">Gold Monogram Crest</option>
                       </select>
                     </div>
