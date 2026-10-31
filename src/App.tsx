@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Search, 
   Trash2, 
@@ -7,23 +7,126 @@ import {
   LogOut, 
   CheckCircle2, 
   Clock, 
-  AlertCircle,
-  RefreshCw,
-  X,
-  Phone,
-  Mail,
-  Send,
-  Lock,
-  Eye,
-  EyeOff,
-  LayoutList,
-  Table as TableIcon
+  AlertCircle, 
+  RefreshCw, 
+  X, 
+  Phone, 
+  Mail, 
+  Send, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  LayoutList, 
+  Table as TableIcon,
+  ChevronDown
 } from 'lucide-react';
 import { Logo } from './components/Logo';
 import { api, Lead } from './services/api';
 
 const PASSCODE = 'sixthsense2026';
 const PUBLIC_SITE_URL = 'https://sixthsenseinvestments.pages.dev';
+
+interface StatusDropdownProps {
+  status: Lead['status'];
+  onChange: (nextStatus: Lead['status']) => void;
+  disabled?: boolean;
+  size?: 'sm' | 'md';
+}
+
+function StatusDropdown({ status, onChange, disabled, size = 'md' }: StatusDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const config = {
+    New: {
+      label: 'New',
+      dot: 'bg-amber-400',
+      badge: 'text-amber-400 bg-amber-950/40 border-amber-800/40 hover:bg-amber-950/70'
+    },
+    Contacted: {
+      label: 'Contacted',
+      dot: 'bg-sky-400',
+      badge: 'text-sky-400 bg-sky-950/40 border-sky-800/40 hover:bg-sky-950/70'
+    },
+    Qualified: {
+      label: 'Qualified',
+      dot: 'bg-teal-400',
+      badge: 'text-teal-400 bg-teal-950/40 border-teal-800/40 hover:bg-teal-950/70'
+    },
+    Converted: {
+      label: 'Converted',
+      dot: 'bg-emerald-400',
+      badge: 'text-emerald-400 bg-emerald-950/40 border-emerald-800/40 hover:bg-emerald-950/70'
+    },
+    Archived: {
+      label: 'Archived',
+      dot: 'bg-slate-400',
+      badge: 'text-slate-400 bg-slate-900 border-slate-800 hover:bg-slate-800/70'
+    }
+  };
+
+  const current = config[status] || config.New;
+  const isSm = size === 'sm';
+
+  return (
+    <div ref={dropdownRef} className="relative inline-block text-left">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`${isSm ? 'h-7 px-2 text-[11px]' : 'h-8 px-2.5 text-xs'} rounded-lg border font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer ${current.badge} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
+        <span className={`w-1.5 h-1.5 rounded-full ${current.dot}`} />
+        <span>Status: {current.label}</span>
+        <ChevronDown className="w-3 h-3 opacity-60 ml-0.5" />
+      </button>
+
+      {isOpen && (
+        <div data-ui className="absolute right-0 mt-1 w-36 rounded-xl bg-[#121720] border border-[#1e2638] shadow-2xl p-1 z-30 space-y-0.5 text-xs">
+          {(['New', 'Contacted', 'Qualified', 'Converted', 'Archived'] as const).map((opt) => {
+            const item = config[opt];
+            const isSelected = status === opt;
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => {
+                  onChange(opt);
+                  setIsOpen(false);
+                }}
+                className={`w-full px-2.5 py-1.5 rounded-lg text-left font-medium transition-colors flex items-center justify-between ${
+                  isSelected 
+                    ? 'bg-[#1a2232] text-white' 
+                    : 'text-[#8b9bb4] hover:bg-[#18202e] hover:text-[#f1f4f8]'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full ${item.dot}`} />
+                  <span>{item.label}</span>
+                </div>
+                {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-[#d4af37]" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -281,6 +384,8 @@ export function App() {
         return 'text-amber-400 bg-amber-950/40 border-amber-800/40';
       case 'Contacted':
         return 'text-sky-400 bg-sky-950/40 border-sky-800/40';
+      case 'Qualified':
+        return 'text-teal-400 bg-teal-950/40 border-teal-800/40';
       case 'Converted':
         return 'text-emerald-400 bg-emerald-950/40 border-emerald-800/40';
       case 'Archived':
@@ -615,17 +720,12 @@ export function App() {
 
                         {/* Status Dropdown */}
                         <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                          <select
-                            value={lead.status}
+                          <StatusDropdown
+                            status={lead.status}
+                            onChange={(next) => handleStatusChange(lead.id, next)}
                             disabled={statusUpdatingId === lead.id}
-                            onChange={(e) => handleStatusChange(lead.id, e.target.value as Lead['status'])}
-                            className={`h-7 px-2 text-xs rounded-lg border outline-none cursor-pointer ${statusStyle}`}
-                          >
-                            <option value="New">New</option>
-                            <option value="Contacted">Contacted</option>
-                            <option value="Converted">Converted</option>
-                            <option value="Archived">Archived</option>
-                          </select>
+                            size="sm"
+                          />
                         </td>
 
                         {/* Quick Actions */}
@@ -756,18 +856,13 @@ export function App() {
                         <Mail className="w-3.5 h-3.5" />
                       </a>
 
-                      {/* Status Selector Dropdown (Fixed Width 110px) */}
-                      <select
-                        value={lead.status}
+                      {/* Status Selector Dropdown */}
+                      <StatusDropdown
+                        status={lead.status}
+                        onChange={(next) => handleStatusChange(lead.id, next)}
                         disabled={statusUpdatingId === lead.id}
-                        onChange={(e) => handleStatusChange(lead.id, e.target.value as Lead['status'])}
-                        className={`h-8 w-28 px-2 text-xs rounded-lg border outline-none cursor-pointer ${statusStyle}`}
-                      >
-                        <option value="New">Status: New</option>
-                        <option value="Contacted">Status: Contacted</option>
-                        <option value="Converted">Status: Converted</option>
-                        <option value="Archived">Status: Archived</option>
-                      </select>
+                        size="md"
+                      />
 
                       {/* Details & Notes Button (Fixed Width 110px) */}
                       <button
